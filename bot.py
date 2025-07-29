@@ -135,11 +135,21 @@ async def get_map(interaction: discord.Interaction, map_code: str):
     
     try:
         response = requests.get(f"{url}/islands/{map_code}")
-        if response.status_code == 200:
-            data = response.json()
-            map_name = data['displayName']
-            creator_code = data['creatorCode']
-            await interaction.response.send_message(f"Map: {map_name}\nCreator: {creator_code}")
+        metrics_response = requests.get(f"{url}/islands/{map_code}/metrics")
+        # Get general map info
+        if response.status_code == 200 and metrics_response.status_code == 200:
+            # Get json data from response
+            response_data = response.json()
+            metrics_data = metrics_response.json()
+
+            # Get map info
+            map_name = response_data['title']
+            creator_code = response_data['creatorCode']
+            peak_ccu = metrics_data['peakCCU']
+            peak_ccu_value = peak_ccu[0]['value']
+            favorites = metrics_data['favorites']
+            favorites_value = favorites[0]['value']
+            await interaction.response.send_message(f"Map: {map_name}\nCreator: {creator_code}\nPeak CCU: {peak_ccu_value}\nFavorites: {favorites_value}")
         else:
             await interaction.response.send_message(f"Failed to get map: {response.status_code}")
     except discord.errors.HTTPException as e:
