@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import os
 from dotenv import load_dotenv
 
@@ -20,7 +19,7 @@ async def on_ready():
     print(f'{bot.user} has connected to Discord!')
     print(f'Bot is in {len(bot.guilds)} guild(s)')
     
-    # Sync application commands
+    # Sync slash commands
     try:
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} command(s)")
@@ -28,17 +27,7 @@ async def on_ready():
         print(f"Failed to sync commands: {e}")
     
     # Set bot status
-    await bot.change_presence(activity=discord.Game(name="!help or /help for commands"))
-
-@bot.event
-async def on_message(message):
-    """Handle incoming messages"""
-    # Ignore messages from the bot itself
-    if message.author == bot.user:
-        return
-    
-    # Process commands
-    await bot.process_commands(message)
+    await bot.change_presence(activity=discord.Game(name="/help for commands"))
 
 # Application Commands (Slash Commands)
 @bot.tree.command(name="hello", description="Say hello to the bot")
@@ -73,19 +62,16 @@ async def slash_info(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="echo", description="Echo a message")
-@app_commands.describe(message="The message to echo")
 async def slash_echo(interaction: discord.Interaction, message: str):
     """Slash command version of echo"""
     await interaction.response.send_message(message)
 
 @bot.tree.command(name="blueberry", description="Secret Command")
-@app_commands.describe(amount='How many hearts to send?')
 async def blueberry(interaction: discord.Interaction, amount: int):
+    """Secret blueberry command"""
     await interaction.response.send_message("<3"*amount)
 
-
-@bot.tree.command(name="clear", description="Clear a specified number of messages")
-@app_commands.describe(amount="Number of messages to delete (max 100)")
+@bot.tree.command(name="clear", description="Clear messages from the channel")
 async def slash_clear(interaction: discord.Interaction, amount: int = 5):
     """Slash command version of clear"""
     # Check permissions
@@ -97,69 +83,32 @@ async def slash_clear(interaction: discord.Interaction, amount: int = 5):
         await interaction.response.send_message("You can only delete up to 100 messages at once!", ephemeral=True)
         return
     
-    if amount < 1:
-        await interaction.response.send_message("Please specify a number greater than 0!", ephemeral=True)
-        return
-    
-    # Defer the response since deletion might take time
+    # Defer the response since we need time to delete messages
     await interaction.response.defer(ephemeral=True)
     
-    # Delete messages (excluding the interaction message)
+    # Delete messages
     deleted = await interaction.channel.purge(limit=amount)
     await interaction.followup.send(f"Deleted {len(deleted)} messages!", ephemeral=True)
 
-# Prefix Commands (keeping existing ones)
-@bot.command(name='hello')
-async def hello(ctx):
-    """Simple hello command"""
-    await ctx.send(f'Hello {ctx.author.mention}! 👋')
-
-@bot.command(name='ping')
-async def ping(ctx):
-    """Check bot latency"""
-    latency = round(bot.latency * 1000)
-    await ctx.send(f'Pong! Latency: {latency}ms')
-
-@bot.command(name='info')
-async def info(ctx):
-    """Display server information"""
-    guild = ctx.guild
+@bot.tree.command(name="help", description="Show all available commands")
+async def slash_help(interaction: discord.Interaction):
+    """Show all available slash commands"""
     embed = discord.Embed(
-        title=f"Server Information",
+        title="Bot Commands",
+        description="Here are all the available slash commands:",
         color=discord.Color.blue()
     )
-    embed.add_field(name="Server Name", value=guild.name, inline=True)
-    embed.add_field(name="Member Count", value=guild.member_count, inline=True)
-    embed.add_field(name="Created At", value=guild.created_at.strftime("%Y-%m-%d"), inline=True)
-    embed.add_field(name="Owner", value=guild.owner.mention, inline=True)
-    embed.add_field(name="Channels", value=len(guild.channels), inline=True)
-    embed.add_field(name="Roles", value=len(guild.roles), inline=True)
     
-    if guild.icon:
-        embed.set_thumbnail(url=guild.icon.url)
+    # Add slash commands
+    embed.add_field(name="/hello", value="Greets the user", inline=True)
+    embed.add_field(name="/ping", value="Shows bot latency", inline=True)
+    embed.add_field(name="/info", value="Shows server information", inline=True)
+    embed.add_field(name="/echo <message>", value="Repeats your message", inline=True)
+    embed.add_field(name="/blueberry <amount>", value="Secret command", inline=True)
+    embed.add_field(name="/clear [amount]", value="Deletes messages (default: 5)", inline=True)
+    embed.add_field(name="/help", value="Shows this help message", inline=True)
     
-    await ctx.send(embed=embed)
-
-@bot.command(name='echo')
-async def echo(ctx, *, message):
-    """Echo a message"""
-    await ctx.send(message)
-
-@bot.command(name='clear')
-@commands.has_permissions(manage_messages=True)
-async def clear(ctx, amount: int = 5):
-    """Clear a specified number of messages (default: 5)"""
-    if amount > 100:
-        await ctx.send("You can only delete up to 100 messages at once!")
-        return
-    
-    deleted = await ctx.channel.purge(limit=amount + 1)  # +1 to include command message
-    await ctx.send(f"Deleted {len(deleted) - 1} messages!", delete_after=3)
-
-@clear.error
-async def clear_error(ctx, error):
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send("You don't have permission to use this command!")
+    await interaction.response.send_message(embed=embed)
 
 # Run the bot
 if __name__ == "__main__":
