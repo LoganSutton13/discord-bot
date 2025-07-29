@@ -37,6 +37,19 @@ async def check_rate_limit(interaction: discord.Interaction) -> bool:
     last_command_time[user_id] = current_time
     return True
 
+async def command_exception_handler(e : discord.errors.HTTPException):
+    if e.status == 429:
+            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
+            await interaction.response.send_message(
+                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
+                ephemeral=True
+            )
+    else:
+        await interaction.response.send_message(
+            f"❌ An error occurred: {e}",
+            ephemeral=True
+        )
+
 @bot.event
 async def on_ready():
     """Called when the bot is ready"""
@@ -119,17 +132,7 @@ async def slash_hello(interaction: discord.Interaction):
     try:
         await interaction.response.send_message(f'Hello {interaction.user.mention}! 👋')
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
 
 @bot.tree.command(name="ping", description="Check bot latency")
 async def slash_ping(interaction: discord.Interaction):
@@ -141,17 +144,7 @@ async def slash_ping(interaction: discord.Interaction):
         latency = round(bot.latency * 1000)
         await interaction.response.send_message(f'Pong! Latency: {latency}ms')
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
 
 @bot.tree.command(name="info", description="Display server information")
 async def slash_info(interaction: discord.Interaction):
@@ -177,17 +170,8 @@ async def slash_info(interaction: discord.Interaction):
         
         await interaction.response.send_message(embed=embed)
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
+        
 
 @bot.tree.command(name="echo", description="Echo a message")
 async def slash_echo(interaction: discord.Interaction, message: str):
@@ -198,17 +182,8 @@ async def slash_echo(interaction: discord.Interaction, message: str):
     try:
         await interaction.response.send_message(message)
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
+
 
 @bot.tree.command(name="blueberry", description="Secret Command")
 async def blueberry(interaction: discord.Interaction, amount: int):
@@ -219,17 +194,8 @@ async def blueberry(interaction: discord.Interaction, amount: int):
     try:
         await interaction.response.send_message("<3"*amount)
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
+        
 
 @bot.tree.command(name="clear", description="Clear messages from the channel")
 async def slash_clear(interaction: discord.Interaction, amount: int = 5):
@@ -254,17 +220,8 @@ async def slash_clear(interaction: discord.Interaction, amount: int = 5):
         deleted = await interaction.channel.purge(limit=amount)
         await interaction.followup.send(f"Deleted {len(deleted)} messages!", ephemeral=True)
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
+
 
 @bot.tree.command(name="help", description="Show all available commands")
 async def slash_help(interaction: discord.Interaction):
@@ -290,17 +247,8 @@ async def slash_help(interaction: discord.Interaction):
         
         await interaction.response.send_message(embed=embed)
     except discord.errors.HTTPException as e:
-        if e.status == 429:
-            retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
-            await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
-                ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                f"❌ An error occurred: {e}",
-                ephemeral=True
-            )
+        command_exception_handler(e)
+        
 
 # Run the bot
 if __name__ == "__main__":
