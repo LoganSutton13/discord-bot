@@ -128,7 +128,7 @@ async def on_message(message):
 
 # Application Commands (Slash Commands)
 @bot.tree.command(name='get_map', description='Get a Fortnite map')
-async def get_map(interaction: discord.Interaction, map_code: int):
+async def get_map(interaction: discord.Interaction, map_code: str):
     """Get a Fornite map"""
     if not await check_rate_limit(interaction):
         return
