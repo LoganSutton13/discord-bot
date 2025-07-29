@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 import asyncio
 import time
+import requests
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,6 +19,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Rate limiting variables
 last_command_time = {}
 RATE_LIMIT_DELAY = 1.0  # 1 second between commands per user
+
+# Fortnite api url
+url = 'https://api.fortnite.com/ecosystem/v1'
 
 async def check_rate_limit(interaction: discord.Interaction) -> bool:
     """Check if user is rate limited"""
@@ -37,7 +41,7 @@ async def check_rate_limit(interaction: discord.Interaction) -> bool:
     last_command_time[user_id] = current_time
     return True
 
-async def command_exception_handler(e : discord.errors.HTTPException):
+async def command_exception_handler(interaction: discord.Interaction, e: discord.errors.HTTPException):
     if e.status == 429:
             retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
             await interaction.response.send_message(
@@ -123,6 +127,24 @@ async def on_message(message):
         
 
 # Application Commands (Slash Commands)
+@bot.tree.command(name='get_map', description='Get a Fortnite map')
+async def get_map(interaction: discord.Interaction, map_code: int):
+    """Get a Fornite map"""
+    if not await check_rate_limit(interaction):
+        return
+    
+    try:
+        response = requests.get(f"{url}/islands/{map_code}")
+        if response.status_code == 200:
+            data = response.json()
+            map_name = data['displayName']
+            creator_code = data['creatorCode']
+            await interaction.response.send_message(f"Map: {map_name}\nCreator: {creator_code}")
+        else:
+            await interaction.response.send_message(f"Failed to get map: {response.status_code}")
+    except discord.errors.HTTPException as e:
+        await command_exception_handler(interaction, e)
+
 @bot.tree.command(name="hello", description="Say hello to the bot")
 async def slash_hello(interaction: discord.Interaction):
     """Slash command version of hello"""
@@ -132,7 +154,7 @@ async def slash_hello(interaction: discord.Interaction):
     try:
         await interaction.response.send_message(f'Hello {interaction.user.mention}! 👋')
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
 
 @bot.tree.command(name="ping", description="Check bot latency")
 async def slash_ping(interaction: discord.Interaction):
@@ -144,7 +166,7 @@ async def slash_ping(interaction: discord.Interaction):
         latency = round(bot.latency * 1000)
         await interaction.response.send_message(f'Pong! Latency: {latency}ms')
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
 
 @bot.tree.command(name="info", description="Display server information")
 async def slash_info(interaction: discord.Interaction):
@@ -170,7 +192,7 @@ async def slash_info(interaction: discord.Interaction):
         
         await interaction.response.send_message(embed=embed)
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
         
 
 @bot.tree.command(name="echo", description="Echo a message")
@@ -182,7 +204,7 @@ async def slash_echo(interaction: discord.Interaction, message: str):
     try:
         await interaction.response.send_message(message)
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
 
 
 @bot.tree.command(name="blueberry", description="Secret Command")
@@ -194,7 +216,7 @@ async def blueberry(interaction: discord.Interaction, amount: int):
     try:
         await interaction.response.send_message("<3"*amount)
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
         
 
 @bot.tree.command(name="clear", description="Clear messages from the channel")
@@ -220,7 +242,7 @@ async def slash_clear(interaction: discord.Interaction, amount: int = 5):
         deleted = await interaction.channel.purge(limit=amount)
         await interaction.followup.send(f"Deleted {len(deleted)} messages!", ephemeral=True)
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
 
 
 @bot.tree.command(name="help", description="Show all available commands")
@@ -247,7 +269,7 @@ async def slash_help(interaction: discord.Interaction):
         
         await interaction.response.send_message(embed=embed)
     except discord.errors.HTTPException as e:
-        command_exception_handler(e)
+        await command_exception_handler(interaction, e)
         
 
 # Run the bot
