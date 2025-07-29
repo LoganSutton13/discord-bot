@@ -78,6 +78,12 @@ async def slash_echo(interaction: discord.Interaction, message: str):
     """Slash command version of echo"""
     await interaction.response.send_message(message)
 
+@bot.tree.command(name="blueberry", description="Secret Command")
+@app_commands.describe(message='How many?')
+async def blueberry(interaction: discord.Interaction, amount: int):
+    await interaction.response.send_message("<3"*amount)
+
+
 @bot.tree.command(name="clear", description="Clear a specified number of messages")
 @app_commands.describe(amount="Number of messages to delete (max 100)")
 async def slash_clear(interaction: discord.Interaction, amount: int = 5):
