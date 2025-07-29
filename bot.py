@@ -29,6 +29,14 @@ async def on_ready():
     # Set bot status
     await bot.change_presence(activity=discord.Game(name="/help for commands"))
 
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    if message.content == "WSU":
+        await message.channel.send("WSU is the best!")
+        
+
 # Application Commands (Slash Commands)
 @bot.tree.command(name="hello", description="Say hello to the bot")
 async def slash_hello(interaction: discord.Interaction):
