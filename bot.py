@@ -79,7 +79,7 @@ async def slash_echo(interaction: discord.Interaction, message: str):
     await interaction.response.send_message(message)
 
 @bot.tree.command(name="blueberry", description="Secret Command")
-@app_commands.describe(message='How many?')
+@app_commands.describe(amount='How many hearts to send?')
 async def blueberry(interaction: discord.Interaction, amount: int):
     await interaction.response.send_message("<3"*amount)
 
