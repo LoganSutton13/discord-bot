@@ -60,7 +60,7 @@ async def slash_info(interaction: discord.Interaction):
     embed.add_field(name="Server Name", value=guild.name, inline=True)
     embed.add_field(name="Member Count", value=guild.member_count, inline=True)
     embed.add_field(name="Created At", value=guild.created_at.strftime("%Y-%m-%d"), inline=True)
-    embed.add_field(name="Owner", value=guild.owner.mention, inline=True)
+    embed.add_field(name="Owner", value=guild.owner.mention if guild.owner else "Unknown", inline=True)
     embed.add_field(name="Channels", value=len(guild.channels), inline=True)
     embed.add_field(name="Roles", value=len(guild.roles), inline=True)
     
