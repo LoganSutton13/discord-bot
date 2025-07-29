@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 import os
+import asyncio
+import time
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -13,21 +15,116 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Rate limiting variables
+last_command_time = {}
+RATE_LIMIT_DELAY = 1.0  # 1 second between commands per user
+
+def rate_limit_check():
+    """Decorator to check rate limiting for commands"""
+    def decorator(func):
+        async def wrapper(interaction: discord.Interaction, *args, **kwargs):
+            user_id = interaction.user.id
+            current_time = time.time()
+            
+            # Check if user is rate limited
+            if user_id in last_command_time:
+                time_since_last = current_time - last_command_time[user_id]
+                if time_since_last < RATE_LIMIT_DELAY:
+                    remaining_time = RATE_LIMIT_DELAY - time_since_last
+                    await interaction.response.send_message(
+                        f"⏰ Please wait {remaining_time:.1f} seconds before using another command!",
+                        ephemeral=True
+                    )
+                    return
+            
+            # Update last command time
+            last_command_time[user_id] = current_time
+            
+            try:
+                return await func(interaction, *args, **kwargs)
+            except discord.errors.HTTPException as e:
+                if e.status == 429:  # Rate limited by Discord
+                    retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
+                    await interaction.response.send_message(
+                        f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
+                        ephemeral=True
+                    )
+                else:
+                    await interaction.response.send_message(
+                        f"❌ An error occurred: {e}",
+                        ephemeral=True
+                    )
+            except Exception as e:
+                await interaction.response.send_message(
+                    f"❌ An unexpected error occurred: {str(e)}",
+                    ephemeral=True
+                )
+        return wrapper
+    return decorator
+
 @bot.event
 async def on_ready():
     """Called when the bot is ready"""
     print(f'{bot.user} has connected to Discord!')
     print(f'Bot is in {len(bot.guilds)} guild(s)')
     
-    # Sync slash commands
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(f"Failed to sync commands: {e}")
+    # Sync slash commands with retry logic
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            synced = await bot.tree.sync()
+            print(f"Synced {len(synced)} command(s)")
+            break
+        except discord.errors.HTTPException as e:
+            if e.status == 429 and attempt < max_retries - 1:
+                retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
+                print(f"Rate limited during command sync. Waiting {retry_after} seconds...")
+                await asyncio.sleep(retry_after)
+            else:
+                print(f"Failed to sync commands: {e}")
+                break
+        except Exception as e:
+            print(f"Failed to sync commands: {e}")
+            break
     
     # Set bot status
-    await bot.change_presence(activity=discord.Game(name="/help for commands"))
+    try:
+        await bot.change_presence(activity=discord.Game(name="/help for commands"))
+    except Exception as e:
+        print(f"Failed to set bot status: {e}")
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Global error handler"""
+    print(f"Error in {event}: {args} {kwargs}")
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    """Handle errors in slash commands"""
+    if isinstance(error, discord.app_commands.CommandInvokeError):
+        original_error = error.original
+        if isinstance(original_error, discord.errors.HTTPException):
+            if original_error.status == 429:
+                retry_after = original_error.retry_after if hasattr(original_error, 'retry_after') else 5
+                await interaction.response.send_message(
+                    f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
+                    ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    f"❌ An error occurred: {original_error}",
+                    ephemeral=True
+                )
+        else:
+            await interaction.response.send_message(
+                f"❌ An unexpected error occurred: {str(original_error)}",
+                ephemeral=True
+            )
+    else:
+        await interaction.response.send_message(
+            f"❌ An error occurred: {str(error)}",
+            ephemeral=True
+        )
 
 @bot.event
 async def on_message(message):
@@ -39,17 +136,20 @@ async def on_message(message):
 
 # Application Commands (Slash Commands)
 @bot.tree.command(name="hello", description="Say hello to the bot")
+@rate_limit_check()
 async def slash_hello(interaction: discord.Interaction):
     """Slash command version of hello"""
     await interaction.response.send_message(f'Hello {interaction.user.mention}! 👋')
 
 @bot.tree.command(name="ping", description="Check bot latency")
+@rate_limit_check()
 async def slash_ping(interaction: discord.Interaction):
     """Slash command version of ping"""
     latency = round(bot.latency * 1000)
     await interaction.response.send_message(f'Pong! Latency: {latency}ms')
 
 @bot.tree.command(name="info", description="Display server information")
+@rate_limit_check()
 async def slash_info(interaction: discord.Interaction):
     """Slash command version of info"""
     guild = interaction.guild
@@ -70,16 +170,19 @@ async def slash_info(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="echo", description="Echo a message")
+@rate_limit_check()
 async def slash_echo(interaction: discord.Interaction, message: str):
     """Slash command version of echo"""
     await interaction.response.send_message(message)
 
 @bot.tree.command(name="blueberry", description="Secret Command")
+@rate_limit_check()
 async def blueberry(interaction: discord.Interaction, amount: int):
     """Secret blueberry command"""
     await interaction.response.send_message("<3"*amount)
 
 @bot.tree.command(name="clear", description="Clear messages from the channel")
+@rate_limit_check()
 async def slash_clear(interaction: discord.Interaction, amount: int = 5):
     """Slash command version of clear"""
     # Check permissions
@@ -99,6 +202,7 @@ async def slash_clear(interaction: discord.Interaction, amount: int = 5):
     await interaction.followup.send(f"Deleted {len(deleted)} messages!", ephemeral=True)
 
 @bot.tree.command(name="help", description="Show all available commands")
+@rate_limit_check()
 async def slash_help(interaction: discord.Interaction):
     """Show all available slash commands"""
     embed = discord.Embed(
