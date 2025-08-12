@@ -22,7 +22,7 @@ RATE_LIMIT_DELAY = 1.0  # 1 second between commands per user
 
 #API URLs
 fn_url = 'https://api.fortnite.com/ecosystem/v1'
-api_url = 'http://localhost:3000/'
+api_url = 'https://blueberry-api.vercel.app/'
 
 async def check_rate_limit(interaction: discord.Interaction) -> bool:
     """Check if user is rate limited"""
