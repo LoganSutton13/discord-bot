@@ -22,7 +22,7 @@ RATE_LIMIT_DELAY = 1.0  # 1 second between commands per user
 
 #API URLs
 fn_url = 'https://api.fortnite.com/ecosystem/v1'
-api_url = 'https://blueberry-api.vercel.app/'
+api_url = 'https://blueberry-api-production.up.railway.app/'
 
 async def check_rate_limit(interaction: discord.Interaction) -> bool:
     """Check if user is rate limited"""
@@ -34,7 +34,7 @@ async def check_rate_limit(interaction: discord.Interaction) -> bool:
         if time_since_last < RATE_LIMIT_DELAY:
             remaining_time = RATE_LIMIT_DELAY - time_since_last
             await interaction.response.send_message(
-                f"⏰ Please wait {remaining_time:.1f} seconds before using another command!",
+                f"Please wait {remaining_time:.1f} seconds before using another command!",
                 ephemeral=True
             )
             return False
@@ -46,12 +46,12 @@ async def command_exception_handler(interaction: discord.Interaction, e: discord
     if e.status == 429:
             retry_after = e.retry_after if hasattr(e, 'retry_after') else 5
             await interaction.response.send_message(
-                f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
+                f"Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
                 ephemeral=True
             )
     else:
         await interaction.response.send_message(
-            f"❌ An error occurred: {e}",
+            f"An error occurred: {e}",
             ephemeral=True
         )
 
@@ -100,22 +100,22 @@ async def on_app_command_error(interaction: discord.Interaction, error):
             if original_error.status == 429:
                 retry_after = original_error.retry_after if hasattr(original_error, 'retry_after') else 5
                 await interaction.response.send_message(
-                    f"🔄 Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
+                    f"Discord is rate limiting requests. Please wait {retry_after} seconds and try again.",
                     ephemeral=True
                 )
             else:
                 await interaction.response.send_message(
-                    f"❌ An error occurred: {original_error}",
+                    f"An error occurred: {original_error}",
                     ephemeral=True
                 )
         else:
             await interaction.response.send_message(
-                f"❌ An unexpected error occurred: {str(original_error)}",
+                f"An unexpected error occurred: {str(original_error)}",
                 ephemeral=True
             )
     else:
         await interaction.response.send_message(
-            f"❌ An error occurred: {str(error)}",
+            f"An error occurred: {str(error)}",
             ephemeral=True
         )
 
