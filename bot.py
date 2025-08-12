@@ -20,8 +20,9 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 last_command_time = {}
 RATE_LIMIT_DELAY = 1.0  # 1 second between commands per user
 
-# Fortnite api url
-url = 'https://api.fortnite.com/ecosystem/v1'
+#API URLs
+fn_url = 'https://api.fortnite.com/ecosystem/v1'
+api_url = 'http://localhost:3000/'
 
 async def check_rate_limit(interaction: discord.Interaction) -> bool:
     """Check if user is rate limited"""
@@ -127,6 +128,25 @@ async def on_message(message):
         
 
 # Application Commands (Slash Commands)
+
+@bot.tree.command(name='login', description='Login to Blueberry API')
+async def login(interaction: discord.Interaction, password: str):
+    """Login to Blueberry API"""
+    if not await check_rate_limit(interaction):
+        return
+    try:
+        response = requests.post(f"{api_url}api/login", json={"password": password})
+        if response.status_code == 200:
+            response_body = response.json()
+            await interaction.response.send_message(response_body['message'])
+        elif response.status_code == 401:
+            await interaction.response.send_message("Invalid password")
+        else:
+            await interaction.response.send_message("Failed to login")
+    except discord.errors.HTTPException as e:
+        await command_exception_handler(interaction, e)
+
+
 @bot.tree.command(name='get_map', description='Get a Fortnite map')
 async def get_map(interaction: discord.Interaction, map_code: str):
     """Get a Fornite map"""
@@ -134,8 +154,8 @@ async def get_map(interaction: discord.Interaction, map_code: str):
         return
     
     try:
-        response = requests.get(f"{url}/islands/{map_code}")
-        metrics_response = requests.get(f"{url}/islands/{map_code}/metrics")
+        response = requests.get(f"{fn_url}/islands/{map_code}")
+        metrics_response = requests.get(f"{fn_url}/islands/{map_code}/metrics")
         # Get general map info
         if response.status_code == 200 and metrics_response.status_code == 200:
             # Get json data from response
